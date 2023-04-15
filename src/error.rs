@@ -4,6 +4,10 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum Error {
     /// An error from the downloader.
-    #[error("Error: {0}")]
+    #[error("Error Downlaoding Audio: {0}")]
     DownloadError(String),
+
+    /// An error from the transcriber service.
+    #[error("Error Trascribing Audio: {0}")]
+    TrascribeError(String),
 }
