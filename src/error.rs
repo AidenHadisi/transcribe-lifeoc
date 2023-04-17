@@ -9,5 +9,5 @@ pub enum Error {
 
     /// An error from the transcriber service.
     #[error("Error Trascribing Audio: {0}")]
-    TrascribeError(String),
+    TranscribeError(String),
 }

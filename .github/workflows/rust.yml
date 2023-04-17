@@ -1,0 +1,24 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build, lint, and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install Rust and Cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+      - name: Build
+        run: cargo build --verbose --all-targets --all-features
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Test
+        run: cargo test --verbose --all-targets --all-features
