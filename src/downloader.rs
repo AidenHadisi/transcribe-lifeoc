@@ -132,7 +132,7 @@ impl YoutubeVideo {
     /// Creates a downloadable mp3 link from the video.
     async fn start_download(&self) -> Result<String> {
         let url = Url::parse_with_params(
-            &Self::CREATE_PROCESS_URL,
+            Self::CREATE_PROCESS_URL,
             &[
                 ("url", self.url.as_ref()),
                 ("format", "mp3"),
@@ -167,7 +167,7 @@ impl YoutubeVideo {
 
     async fn check_status(&self, guid: String) -> Result<Option<String>> {
         let url = Url::parse_with_params(
-            &Self::GET_STATUS_URL,
+            Self::GET_STATUS_URL,
             &[("guid", guid.as_ref()), ("response", "json")],
         )
         .map_err(|e| Error::DownloadError(e.to_string()))?;
