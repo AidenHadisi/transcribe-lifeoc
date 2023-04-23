@@ -115,12 +115,15 @@ impl YoutubeVideo {
         }
     }
 
+    /// Creates a downloadable mp3 link from the video.
     pub async fn create_download_link(&self) -> Result<String> {
+        /// The maximum number of times to check the status of the download.
+        const MAX_RETRIES: usize = 10;
+
         let guid = self.start_download().await?;
-        //use tokio interval to check status
         let mut interval = tokio::time::interval(Duration::from_secs(30));
 
-        for _ in 0..10 {
+        for _ in 0..MAX_RETRIES {
             interval.tick().await;
             if let Some(url) = self.check_status(guid.clone()).await? {
                 return Ok(url);
@@ -129,6 +132,7 @@ impl YoutubeVideo {
 
         Err(Error::DownloadError("Download timed out".to_string()))
     }
+
     /// Creates a downloadable mp3 link from the video.
     async fn start_download(&self) -> Result<String> {
         let url = Url::parse_with_params(
