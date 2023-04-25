@@ -116,21 +116,21 @@ impl YoutubeVideo {
     }
 
     /// Creates a downloadable mp3 link from the video.
-    pub async fn create_download_link(&self) -> Result<String> {
-        /// The maximum number of times to check the status of the download.
-        const MAX_RETRIES: usize = 10;
-
+    pub async fn create_download_link(&self, timeout: Duration) -> Result<String> {
         let guid = self.start_download().await?;
-        let mut interval = tokio::time::interval(Duration::from_secs(30));
-
-        for _ in 0..MAX_RETRIES {
-            interval.tick().await;
-            if let Some(url) = self.check_status(guid.clone()).await? {
-                return Ok(url);
+        let poll_status = async {
+            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            loop {
+                interval.tick().await;
+                if let Some(url) = self.check_status(&guid).await? {
+                    return Ok(url);
+                }
             }
-        }
+        };
 
-        Err(Error::DownloadError("Download timed out".to_string()))
+        tokio::time::timeout(timeout, poll_status)
+            .await
+            .map_err(|_| Error::DownloadError("Download timed out".to_string()))?
     }
 
     /// Creates a downloadable mp3 link from the video.
@@ -169,7 +169,7 @@ impl YoutubeVideo {
         Ok(guid)
     }
 
-    async fn check_status(&self, guid: String) -> Result<Option<String>> {
+    async fn check_status(&self, guid: &str) -> Result<Option<String>> {
         let url = Url::parse_with_params(
             Self::GET_STATUS_URL,
             &[("guid", guid.as_ref()), ("response", "json")],

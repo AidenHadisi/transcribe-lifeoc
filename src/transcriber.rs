@@ -18,6 +18,8 @@ pub struct AssemblyAiTranscriber {
 
     /// The client to use for making requests.
     client: reqwest::Client,
+
+    max_timeout: Duration,
 }
 
 impl AssemblyAiTranscriber {
@@ -25,9 +27,10 @@ impl AssemblyAiTranscriber {
     const ASSEMBLYAI_API_URL: &'static str = "https://api.assemblyai.com/v2/transcript";
 
     /// Creates a new [`YoutubeTranscriber`].
-    pub fn new(assemblyai_api_key: impl ToString) -> Self {
+    pub fn new(assemblyai_api_key: impl ToString, max_timeout: Duration) -> Self {
         Self {
             assemblyai_api_key: assemblyai_api_key.to_string(),
+            max_timeout,
             client: reqwest::Client::builder()
                 .timeout(Duration::from_secs(60))
                 .build()
@@ -77,28 +80,26 @@ impl AssemblyAiTranscriber {
 
 impl Transcriber for AssemblyAiTranscriber {
     async fn transcribe(&self, audio_url: &str) -> super::Result<String> {
-        const MAX_RETRY_COUNT: u32 = 30;
-        let mut interval = tokio::time::interval(Duration::from_secs(30));
-
         let id = self.start_transcription(audio_url).await?.id;
 
-        for _ in 0..MAX_RETRY_COUNT {
-            interval.tick().await;
+        let poll_status = async {
+            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            loop {
+                interval.tick().await;
 
-            match self.get_transcription_result(&id).await? {
-                //if the text field is some return it
-                TranscribeResponse {
-                    text: Some(text), ..
-                } => return Ok(text),
-
-                //log any other result
-                result => debug!("Got result: {:?}", result),
+                let response = self.get_transcription_result(&id).await?;
+                debug!("Transcription response: {:?}", response);
+                if let Some(text) = response.text {
+                    return Ok(text);
+                }
             }
-        }
+        };
 
-        Err(Error::TranscribeError(
-            "Transcription failed. Maximum retries reached.".into(),
-        ))
+        tokio::time::timeout(self.max_timeout, poll_status)
+            .await
+            .map_err(|_| {
+                Error::TranscribeError("Transcription failed. Maximum timeout reached.".into())
+            })?
     }
 }
 
