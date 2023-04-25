@@ -172,7 +172,7 @@ impl YoutubeVideo {
     async fn check_status(&self, guid: &str) -> Result<Option<String>> {
         let url = Url::parse_with_params(
             Self::GET_STATUS_URL,
-            &[("guid", guid.as_ref()), ("response", "json")],
+            &[("guid", guid), ("response", "json")],
         )
         .map_err(|e| Error::DownloadError(e.to_string()))?;
 
